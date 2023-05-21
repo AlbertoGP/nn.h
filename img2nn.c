@@ -156,6 +156,8 @@ int render_upscaled_screenshot(NN nn, const char *out_file_path)
     return 0;
 }
 
+int max(int a, int b) { return a > b? a: b; }
+
 int main(int argc, char **argv)
 {
     const char *program = args_shift(&argc, &argv);
@@ -240,13 +242,16 @@ int main(int argc, char **argv)
     size_t preview_width = 28;
     size_t preview_height = 28;
 
-    Image preview_image1 = GenImageColor(preview_width, preview_height, BLACK);
+    Image preview_image1 = GenImageColor(img1_width, img1_height, BLACK);
     Texture2D preview_texture1 = LoadTextureFromImage(preview_image1);
 
-    Image preview_image2 = GenImageColor(preview_width, preview_height, BLACK);
+    Image preview_image2 = GenImageColor(img2_width, img2_height, BLACK);
     Texture2D preview_texture2 = LoadTextureFromImage(preview_image2);
 
-    Image preview_image3 = GenImageColor(preview_width, preview_height, BLACK);
+    size_t img3_width  = max(img1_width,  img2_width);
+    size_t img3_height = max(img1_height, img2_height);
+
+    Image preview_image3 = GenImageColor(img3_width, img3_height, BLACK);
     Texture2D preview_texture3 = LoadTextureFromImage(preview_image3);
 
     Image original_image1 = GenImageColor(img1_width, img1_height, BLACK);
@@ -319,38 +324,41 @@ int main(int argc, char **argv)
             rx += rw;
 
             float scale = rh*0.01;
+            float scale_preview_image1 = scale*preview_width/max(img1_width, img1_height);
+            float scale_preview_image2 = scale*preview_width/max(img2_width, img2_height);
+            float scale_preview_image3 = scale*preview_width/max(img3_width, img3_height);
 
             MAT_AT(NN_INPUT(nn), 0, 2) = 0.f;
             gym_nn_image_grayscale(nn, preview_image1.data, preview_image1.width, preview_image1.height, preview_image1.width, 0, 1);
             UpdateTexture(preview_texture1, preview_image1.data);
             DrawTextureEx(preview_texture1, CLITERAL(Vector2) {
-                rx, ry  + img1_height*scale
-            }, 0, scale, WHITE);
+                rx, ry  + preview_height*scale
+            }, 0, scale_preview_image1, WHITE);
             DrawTextureEx(original_texture1, CLITERAL(Vector2) {
                 rx, ry
-            }, 0, scale, WHITE);
+            }, 0, scale_preview_image1, WHITE);
 
             MAT_AT(NN_INPUT(nn), 0, 2) = 1.f;
             gym_nn_image_grayscale(nn, preview_image2.data, preview_image2.width, preview_image2.height, preview_image2.width, 0, 1);
             UpdateTexture(preview_texture2, preview_image2.data);
             DrawTextureEx(preview_texture2, CLITERAL(Vector2) {
-                rx + img1_width*scale, ry  + img2_height*scale
-            }, 0, scale, WHITE);
+                rx + preview_width*scale, ry  + preview_height*scale
+            }, 0, scale_preview_image2, WHITE);
             DrawTextureEx(original_texture2, CLITERAL(Vector2) {
-                rx + img1_width*scale, ry
-            }, 0, scale, WHITE);
+                rx + preview_width*scale, ry
+            }, 0, scale_preview_image2, WHITE);
 
             MAT_AT(NN_INPUT(nn), 0, 2) = scroll;
             gym_nn_image_grayscale(nn, preview_image3.data, preview_image3.width, preview_image3.height, preview_image3.width, 0, 1);
             UpdateTexture(preview_texture3, preview_image3.data);
             DrawTextureEx(preview_texture3, CLITERAL(Vector2) {
-                rx, ry + img2_height*scale*2
-            }, 0, 2*scale, WHITE);
+                rx, ry + preview_height*scale*2
+            }, 0, 2*scale_preview_image3, WHITE);
 
             {
                 float pad = rh*0.05;
-                ry = ry + img2_height*scale*4 + pad;
-                rw = img1_width*scale*2;
+                ry = ry + preview_height*scale*4 + pad;
+                rw = preview_width*scale*2;
                 rh = rh*0.02;
                 gym_slider(&scroll, &scroll_dragging, rx, ry, rw, rh);
             }
